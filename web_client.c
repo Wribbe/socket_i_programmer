@@ -7,16 +7,21 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
+#include <netdb.h>
+
 int
 main(void)
 {
-    int socketfd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in addr = {0};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(80);
-    addr.sin_addr.s_addr = 0x22d8b85d; // Byte-reversed.
+    struct addrinfo hints = {0};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo * servinfo = NULL;
+    int status = getaddrinfo("www.example.com", "80", &hints, &servinfo);
+    int socketfd = socket(servinfo->ai_family,
+            servinfo->ai_socktype,
+            servinfo->ai_protocol);
 
-    int res = connect(socketfd, (struct sockaddr *)&addr, sizeof(addr));
+    int res = connect(socketfd, servinfo->ai_addr, servinfo->ai_addrlen);
     if (res) {
         fprintf(stderr, "Could not connect, aborting.\n");
         return EXIT_FAILURE;
@@ -27,5 +32,8 @@ main(void)
     size_t size_buffer = 2048;
     char buffer[size_buffer];
     n = read(socketfd, buffer, size_buffer);
-    printf("%s", buffer);
+    printf("%s\n", buffer);
+
+    /* Free the address information. */
+    freeaddrinfo(servinfo);
 }
